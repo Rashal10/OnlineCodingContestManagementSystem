@@ -1,4 +1,4 @@
-# CodeArena
+# CodeArenA
 
 [![React](https://img.shields.io/badge/Frontend-React%2019-61dafb?style=for-the-badge&logo=react&logoColor=white)](frontend/package.json)
 [![Vite](https://img.shields.io/badge/Build-Vite-646cff?style=for-the-badge&logo=vite&logoColor=white)](frontend/package.json)
