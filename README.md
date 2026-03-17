@@ -276,10 +276,10 @@ The frontend includes:
 ### Leaderboard and Dashboard
 
 | Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/leaderboard` | Global leaderboard |
+| ---   | ---                           | ---                 |
+| `GET` | `/api/leaderboard`            | Global leaderboard  |
 | `GET` | `/api/leaderboard/:contestId` | Contest leaderboard |
-| `GET` | `/api/dashboard/stats` | Platform statistics |
+| `GET` | `/api/dashboard/stats`        | Platform statistics |
 
 ## Validation and Business Rules
 
@@ -328,14 +328,3 @@ The current submission flow stores code and score, which is suitable for demonst
 ## Why This Project Stands Out
 
 CodeArena is more than a CRUD dashboard. It models an actual contest workflow with state transitions, role boundaries, relational data integrity, and leaderboard computation. That gives it stronger system-design value than a basic full-stack template while still remaining practical to run and present locally.
-
-## Repository Notes
-
-- Backend schema and SQL assets live in [database/schema.sql](database/schema.sql) and [database/procedures.sql](database/procedures.sql).
-- Backend application code lives in [backend/src](backend/src).
-- Frontend application code lives in [frontend/src](frontend/src).
-- Project write-up lives in [Chapter3_Report.md](Chapter3_Report.md).
-
-## License
-
-This repository currently does not include a license file. Add one if you plan to distribute or publish the project publicly.
