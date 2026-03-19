@@ -45,9 +45,9 @@ CodeArena focuses on the core workflow of a competitive programming platform:
 ### Participation and Submissions
 
 - Users can join contests
-- Submissions are accepted only for joined users
-- Submissions are validated against contest status and contest-problem mapping
-- Scores are capped by each problem's maximum score
+- Submissions are accepted only for joined users.
+- Submissions are validated against contest status and contest-problem mapping.
+- Scores are capped by each problem's maximum score.
 
 ### Rankings and Insights
 
