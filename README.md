@@ -320,10 +320,9 @@ What it does not yet include:
 - Real code execution and sandboxed judging
 - Test-case based evaluation engine
 - Multi-language runtime containers
-- Pagination and advanced filtering UI
 - Production deployment configuration
 
-The current submission flow stores code and score, which is suitable for demonstration, architecture review, and academic/project evaluation.
+The current submission flow stores code and score, which is suitable for demonstration, architecture review, relatively new and academic/project evaluation.
 In Future we believe to fix and add new features to the platform.
 
 ## Why This Project Stands Out
