@@ -46,15 +46,15 @@ async function seed() {
     // ── Contests ──
     await connection.execute(
       `INSERT INTO contests (title, description, start_time, end_time, status) VALUES (?, ?, ?, ?, ?)`,
-      ['Weekly Contest 1', 'First weekly coding contest featuring algorithmic challenges.', '2025-09-12 09:00:00', '2025-09-12 12:00:00', 'ONGOING']
+      ['Weekly Contest 1', 'First weekly coding contest featuring algorithmic challenges.', '2026-12-10 09:00:00', '2026-12-10 12:00:00', 'ONGOING']
     );
     await connection.execute(
       `INSERT INTO contests (title, description, start_time, end_time, status) VALUES (?, ?, ?, ?, ?)`,
-      ['Weekly Contest 2', 'Second weekly coding contest with data structure problems.', '2025-09-19 09:00:00', '2025-09-19 12:00:00', 'UPCOMING']
+      ['Weekly Contest 2', 'Second weekly coding contest with data structure problems.', '2026-12-19 09:00:00', '2026-12-19 12:00:00', 'UPCOMING']
     );
     await connection.execute(
       `INSERT INTO contests (title, description, start_time, end_time, status) VALUES (?, ?, ?, ?, ?)`,
-      ['Monthly Challenge', 'Monthly competitive programming marathon.', '2025-09-01 10:00:00', '2025-09-01 16:00:00', 'ENDED']
+      ['Monthly Challenge', 'Monthly competitive programming marathon.', '2026-11-01 10:00:00', '2026-11-01 16:00:00', 'ENDED']
     );
     console.log('  ✓ 3 contests');
 
