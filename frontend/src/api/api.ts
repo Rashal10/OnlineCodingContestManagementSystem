@@ -122,7 +122,6 @@ export async function submitSolution(contestId: number, problemId: number, code:
       problem_id: problemId, 
       code, 
       language,
-      score: Math.floor(Math.random() * 100) + 1 // Simulated score since no judge
     }),
   });
   if (!res.ok) {
