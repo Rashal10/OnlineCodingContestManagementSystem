@@ -4,6 +4,8 @@
 -- Database: codearena
 -- ==========================================================
 
+CREATE DATABASE IF NOT EXISTS codearena;
+
 USE codearena;
 
 -- ==========================================================
