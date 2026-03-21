@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { fetchProblems, fetchContests, submitSolution, fetchParticipations } from '../api/api';
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { fetchContests, fetchContestProblems, submitSolution, fetchParticipations } from "../api/api";
 
 interface Problem {
   problem_id: number;
   title: string;
   difficulty: string;
+  max_score: number;
 }
 
 interface Contest {
@@ -17,69 +18,91 @@ interface Contest {
 export default function Submit() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
-  const [problems, setProblems] = useState<Problem[]>([]);
+
   const [contests, setContests] = useState<Contest[]>([]);
+  const [problems, setProblems] = useState<Problem[]>([]);
   const [participations, setParticipations] = useState<number[]>([]);
-  
+
   const [selectedContest, setSelectedContest] = useState<number>(0);
   const [selectedProblem, setSelectedProblem] = useState<number>(0);
-  const [code, setCode] = useState('');
-  const [language, setLanguage] = useState('cpp');
-  
+  const [code, setCode] = useState("");
+  const [language, setLanguage] = useState("cpp");
+
   const [loading, setLoading] = useState(true);
+  const [loadingProblems, setLoadingProblems] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
+  // Load contests and participations on mount
   useEffect(() => {
-    const problemId = searchParams.get('problem');
-    const contestId = searchParams.get('contest');
+    const contestId = searchParams.get("contest");
 
-    Promise.all([
-      fetchProblems(),
-      fetchContests(),
-      fetchParticipations()
-    ])
-      .then(([problemsData, contestsData, participationsData]) => {
-        setProblems(problemsData);
-        // Only show ONGOING contests
-        const ongoingContests = contestsData.filter((c: Contest) => c.status === 'ONGOING');
+    Promise.all([fetchContests(), fetchParticipations()])
+      .then(([contestsData, participationsData]) => {
+        const ongoingContests = contestsData.filter((c: Contest) => c.status === "ONGOING");
         setContests(ongoingContests);
-        
-        // Extract contest IDs that user has joined
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
         const userParticipations = participationsData
           .filter((p: any) => p.user_id === user.user_id)
           .map((p: any) => p.contest_id);
         setParticipations(userParticipations);
 
-        if (problemId) setSelectedProblem(parseInt(problemId));
-        if (contestId) setSelectedContest(parseInt(contestId));
+        if (contestId) {
+          const cid = parseInt(contestId);
+          setSelectedContest(cid);
+        }
       })
-      .catch(() => setError('Failed to load data'))
+      .catch(() => setError("Failed to load data"))
       .finally(() => setLoading(false));
   }, [searchParams]);
 
+  // Load problems when contest changes
+  useEffect(() => {
+    if (!selectedContest) {
+      setProblems([]);
+      setSelectedProblem(0);
+      return;
+    }
+
+    setLoadingProblems(true);
+    setSelectedProblem(0);
+
+    fetchContestProblems(selectedContest)
+      .then((data) => {
+        setProblems(data);
+        const problemParam = searchParams.get("problem");
+        if (problemParam) {
+          const pid = parseInt(problemParam);
+          if (data.some((p: Problem) => p.problem_id === pid)) {
+            setSelectedProblem(pid);
+          }
+        }
+      })
+      .catch(() => setProblems([]))
+      .finally(() => setLoadingProblems(false));
+  }, [selectedContest]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     if (!selectedContest || !selectedProblem) {
-      setError('Please select both a contest and a problem');
+      setError("Please select both a contest and a problem");
       return;
     }
 
     if (!code.trim()) {
-      setError('Please enter your code');
+      setError("Please enter your code");
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
-      setError('You must be logged in to submit');
-      navigate('/login');
+      setError("You must be logged in to submit");
+      navigate("/login");
       return;
     }
 
@@ -87,22 +110,31 @@ export default function Submit() {
 
     try {
       const result = await submitSolution(selectedContest, selectedProblem, code, language);
-      setSuccess(`Solution submitted successfully! Score: ${result.score}`);
-      setCode('');
+      setSuccess(`Solution submitted! Score: ${result.score}`);
+      setCode("");
     } catch (err: any) {
-      setError(err.message || 'Submission failed');
+      setError(err.message || "Submission failed");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="content"><p>Loading...</p></div>;
+  if (loading) return <p>Loading...</p>;
 
-  const joinedContests = contests.filter(c => participations.includes(c.contest_id));
+  const joinedContests = contests.filter((c) => participations.includes(c.contest_id));
 
   return (
     <div className="submit-page">
       <h1>Submit Solution</h1>
+
+      {joinedContests.length === 0 && (
+        <div className="error-message" style={{ marginBottom: 20 }}>
+          You haven't joined any ongoing contests yet.{" "}
+          <a href="/contests" style={{ color: "var(--accent)" }}>
+            Go to Contests →
+          </a>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="submit-form">
         {error && <div className="error-message">{error}</div>}
@@ -118,19 +150,12 @@ export default function Submit() {
               required
             >
               <option value={0}>Select a contest</option>
-              {joinedContests.length === 0 ? (
-                <option disabled>No joined contests available</option>
-              ) : (
-                joinedContests.map((c) => (
-                  <option key={c.contest_id} value={c.contest_id}>
-                    {c.title}
-                  </option>
-                ))
-              )}
+              {joinedContests.map((c) => (
+                <option key={c.contest_id} value={c.contest_id}>
+                  {c.title}
+                </option>
+              ))}
             </select>
-            {joinedContests.length === 0 && (
-              <small className="hint">You must join a contest first</small>
-            )}
           </div>
 
           <div className="form-group">
@@ -139,12 +164,19 @@ export default function Submit() {
               id="problem"
               value={selectedProblem}
               onChange={(e) => setSelectedProblem(parseInt(e.target.value))}
+              disabled={!selectedContest || loadingProblems}
               required
             >
-              <option value={0}>Select a problem</option>
+              <option value={0}>
+                {!selectedContest
+                  ? "Select a contest first"
+                  : loadingProblems
+                    ? "Loading problems..."
+                    : "Select a problem"}
+              </option>
               {problems.map((p) => (
                 <option key={p.problem_id} value={p.problem_id}>
-                  {p.title} ({p.difficulty})
+                  {p.title} • {p.difficulty} • {p.max_score} pts
                 </option>
               ))}
             </select>
@@ -152,11 +184,7 @@ export default function Submit() {
 
           <div className="form-group">
             <label htmlFor="language">Language</label>
-            <select
-              id="language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
+            <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
               <option value="cpp">C++</option>
               <option value="c">C</option>
               <option value="java">Java</option>
@@ -172,26 +200,22 @@ export default function Submit() {
             id="code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Paste your code here..."
-            rows={20}
+            placeholder="Paste your solution code here..."
+            rows={18}
             required
           />
         </div>
 
         <div className="form-actions">
-          <button 
-            type="button" 
-            onClick={() => navigate(-1)} 
-            className="btn-secondary"
-          >
+          <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
             Cancel
           </button>
-          <button 
-            type="submit" 
-            className="btn-primary" 
-            disabled={submitting}
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={submitting || !selectedContest || !selectedProblem}
           >
-            {submitting ? 'Submitting...' : 'Submit Solution'}
+            {submitting ? "Submitting..." : "Submit Solution"}
           </button>
         </div>
       </form>

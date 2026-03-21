@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises');
 const path = require('path');
+require('dotenv').config();
 
 const DB_CONFIG = {
     host: process.env.DB_HOST || 'localhost',
@@ -72,13 +73,9 @@ async function initializeDatabase() {
         connection = await mysql.createConnection(DB_CONFIG);
 
         const schemaPath = path.join(__dirname, '../database/schema.sql');
-        const proceduresPath = path.join(__dirname, '../database/procedures.sql');
 
         console.log('  Executing schema.sql...');
         await executeSqlFile(connection, schemaPath);
-
-        console.log('  Executing procedures.sql...');
-        await executeSqlFile(connection, proceduresPath);
 
         console.log('✅ Database initialization complete!');
     } catch (error) {

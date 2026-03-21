@@ -80,6 +80,38 @@ export async function joinContest(contestId: number) {
   return res.json();
 }
 
+export async function fetchActiveParticipation() {
+  const res = await fetch(`${API_BASE}/contests/me/active-participation`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch active participation');
+  return res.json();
+}
+
+export async function startContest(contestId: number) {
+  const res = await fetch(`${API_BASE}/contests/${contestId}/start`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to start contest');
+  }
+  return res.json();
+}
+
+export async function finishContest(contestId: number) {
+  const res = await fetch(`${API_BASE}/contests/${contestId}/finish`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to finish contest');
+  }
+  return res.json();
+}
+
 // Problem API
 export async function fetchProblems() {
   const res = await fetch(`${API_BASE}/problems`);

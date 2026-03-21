@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+import jwt from 'jsonwebtoken';
 const { pool } = require('../config/db');
 
-// Extend Express Request type to include the authenticated user
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_for_codearena';
+
 export interface AuthRequest extends Request {
     user?: {
         user_id: number;
@@ -15,7 +16,6 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
     try {
         let token;
 
-        // Check if the auth header exists and starts with Bearer
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
         }
@@ -25,18 +25,18 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
             return;
         }
 
-        // Verify token
-        const decoded: any = verifyToken(token);
+        const decoded: any = jwt.verify(token, JWT_SECRET);
 
-        // Fetch the user from the database
-        const [rows]: any = await pool.execute('SELECT user_id, username, role FROM users WHERE user_id = ?', [decoded.userId]);
+        const [rows]: any = await pool.execute(
+            'SELECT user_id, username, role FROM users WHERE user_id = ?',
+            [decoded.userId]
+        );
 
         if (rows.length === 0) {
             res.status(401).json({ error: 'Not authorized, user not found' });
             return;
         }
 
-        // Attach user to request object
         req.user = rows[0];
         next();
     } catch (error) {
