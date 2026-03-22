@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { fetchProblemById } from '../api/api';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { fetchProblemById } from "../api/api";
 
 interface Problem {
   problem_id: number;
   title: string;
   description: string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  difficulty: "EASY" | "MEDIUM" | "HARD";
   max_score: number;
 }
 
@@ -15,11 +15,11 @@ export default function ProblemDetails() {
   const navigate = useNavigate();
   const [problem, setProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!id) return;
-    
+
     fetchProblemById(parseInt(id))
       .then(setProblem)
       .catch((err) => setError(err.message))
@@ -27,14 +27,14 @@ export default function ProblemDetails() {
   }, [id]);
 
   const difficultyClass = (d: string) => {
-    if (d === 'EASY') return 'green';
-    if (d === 'MEDIUM') return 'blue';
-    return 'red';
+    if (d === "EASY") return "green";
+    if (d === "MEDIUM") return "blue";
+    return "red";
   };
 
-  if (loading) return <div className="content"><p>Loading problem...</p></div>;
-  if (error) return <div className="content"><p className="red">{error}</p></div>;
-  if (!problem) return <div className="content"><p>Problem not found</p></div>;
+  if (loading) return <p>Loading problem...</p>;
+  if (error) return <p className="red">{error}</p>;
+  if (!problem) return <p>Problem not found</p>;
 
   return (
     <div className="problem-details">
@@ -54,14 +54,14 @@ export default function ProblemDetails() {
       <div className="problem-body">
         <h2>Problem Statement</h2>
         <div className="problem-description">
-          {problem.description.split('\n').map((line, idx) => (
+          {problem.description.split("\n").map((line, idx) => (
             <p key={idx}>{line}</p>
           ))}
         </div>
       </div>
 
       <div className="problem-actions">
-        <button 
+        <button
           onClick={() => navigate(`/submit?problem=${problem.problem_id}`)}
           className="btn-primary"
         >

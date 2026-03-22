@@ -51,10 +51,18 @@ async function initializeDatabase() {
         description TEXT NOT NULL,
         start_time DATETIME NOT NULL,
         end_time DATETIME NOT NULL,
+        duration_minutes INT NOT NULL DEFAULT 120,
         status ENUM('UPCOMING','ONGOING','ENDED') NOT NULL DEFAULT 'UPCOMING',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB
     `);
+    
+    // Auto-migrate if duration_minutes doesn't exist
+    try {
+      await connection.query('ALTER TABLE contests ADD COLUMN duration_minutes INT NOT NULL DEFAULT 120');
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.warn('Migration warning:', e.message);
+    }
     console.log('  ✓ contests');
 
     // ── PROBLEM table ──
@@ -81,7 +89,7 @@ async function initializeDatabase() {
     `);
     console.log('  ✓ contest_problems');
 
-    // ── SUBMISSION table (spec: FOUND_POST) ──
+    // ── SUBMISSION table_ ──
     await connection.query(`
       CREATE TABLE IF NOT EXISTS submissions (
         submission_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -105,12 +113,21 @@ async function initializeDatabase() {
         participation_id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         contest_id INT NOT NULL,
+        status ENUM('REGISTERED', 'STARTED', 'FINISHED') NOT NULL DEFAULT 'REGISTERED',
+        start_time DATETIME NULL,
         join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
         FOREIGN KEY (contest_id) REFERENCES contests(contest_id) ON DELETE CASCADE,
         UNIQUE KEY unique_participation (user_id, contest_id)
       ) ENGINE=InnoDB
     `);
+    
+    // Auto-migrate for existing participations table
+    try {
+      await connection.query("ALTER TABLE participations ADD COLUMN status ENUM('REGISTERED', 'STARTED', 'FINISHED') NOT NULL DEFAULT 'REGISTERED', ADD COLUMN start_time DATETIME NULL");
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.warn('Migration warning:', e.message);
+    }
     console.log('  ✓ participations');
 
     console.log('\n🎉 All tables created successfully!');
