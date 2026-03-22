@@ -1,0 +1,19 @@
+
+> codearena-backend@1.0.0 setup
+> node database.js && node seed.js
+
+[dotenv@17.3.1] injecting env (5) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+🔄 Initializing database schema and procedures...
+  Executing schema.sql...
+Error executing schema.sql: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '\`codearena\`' at line 1
+❌ Failed to initialize database: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '\`codearena\`' at line 1
+Error: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '\`codearena\`' at line 1
+    at PromiseConnection.query (C:\Users\Rashal\OneDrive\Documents\GitHub\OnlineCodingContestManagementSystem\backend\node_modules\mysql2\lib\promise\connection.js:29:22)
+    at executeSqlFile (C:\Users\Rashal\OneDrive\Documents\GitHub\OnlineCodingContestManagementSystem\backend\database.js:59:34)
+    at async initializeDatabase (C:\Users\Rashal\OneDrive\Documents\GitHub\OnlineCodingContestManagementSystem\backend\database.js:78:9) {
+  code: 'ER_PARSE_ERROR',
+  errno: 1064,
+  sql: 'CREATE DATABASE IF NOT EXISTS \\`codearena\\`;\r\n',
+  sqlState: '42000',
+  sqlMessage: "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '\\`codearena\\`' at line 1"
+}
