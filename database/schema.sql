@@ -1,6 +1,6 @@
 -- Create database
-CREATE DATABASE IF NOT EXISTS \`codearena\`;
-USE \`codearena\`;
+CREATE DATABASE IF NOT EXISTS `codearena`;
+USE `codearena`;
 
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS contests (
   description TEXT NOT NULL,
   start_time DATETIME NOT NULL,
   end_time DATETIME NOT NULL,
+  duration_minutes INT DEFAULT 120,
   status ENUM('UPCOMING','ONGOING','ENDED') NOT NULL DEFAULT 'UPCOMING',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -62,6 +63,8 @@ CREATE TABLE IF NOT EXISTS participations (
   user_id INT NOT NULL,
   contest_id INT NOT NULL,
   join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  start_time DATETIME NULL,
+  status ENUM('JOINED','STARTED','FINISHED') DEFAULT 'JOINED',
   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
   FOREIGN KEY (contest_id) REFERENCES contests(contest_id) ON DELETE CASCADE,
   UNIQUE KEY unique_participation (user_id, contest_id)

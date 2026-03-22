@@ -1,0 +1,16 @@
+
+> codearena-backend@1.0.0 setup
+> node database.js && node seed.js
+
+[dotenv@17.3.1] injecting env (5) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+[dotenv@17.3.1] injecting env (5) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+🌱 Seeding database...
+
+  ✓ 5 users (1 admin + 4 users)
+  ✓ 4 contests (2 ongoing, 1 upcoming, 1 ended)
+  ✓ 10 problems (3 easy, 4 medium, 3 hard)
+  ✓ contest-problem mappings
+  ✓ participations
+  ✓ 10 submissions
+
+🎉 Database seeded successfully!
