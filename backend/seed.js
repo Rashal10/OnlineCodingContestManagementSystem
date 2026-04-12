@@ -2,26 +2,62 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const { DB_CONFIG, DB_NAME } = require('./database');
 
+// Generate dates relative to NOW so contests are always valid
+const now = new Date();
+const daysAgo = (d) => { const dt = new Date(now); dt.setDate(dt.getDate() - d); return dt.toISOString().slice(0, 19).replace('T', ' '); };
+const daysFromNow = (d) => { const dt = new Date(now); dt.setDate(dt.getDate() + d); return dt.toISOString().slice(0, 19).replace('T', ' '); };
+const hoursAgo = (h) => { const dt = new Date(now); dt.setHours(dt.getHours() - h); return dt.toISOString().slice(0, 19).replace('T', ' '); };
+const hoursFromNow = (h) => { const dt = new Date(now); dt.setHours(dt.getHours() + h); return dt.toISOString().slice(0, 19).replace('T', ' '); };
+
+// ── Refresh dates only mode (non-destructive) ──
+async function refreshDates() {
+  let connection;
+  try {
+    connection = await mysql.createConnection({ ...DB_CONFIG, database: DB_NAME });
+    console.log('🔄 Refreshing contest dates (non-destructive)...\n');
+
+    const updates = [
+      { title: 'Weekly Challenge #1', start: hoursAgo(2), end: hoursFromNow(22), status: 'ONGOING' },
+      { title: 'Data Structures Sprint', start: hoursAgo(1), end: hoursFromNow(47), status: 'ONGOING' },
+      { title: 'Monthly Marathon', start: daysFromNow(3), end: daysFromNow(4), status: 'UPCOMING' },
+      { title: 'Beginner Bootcamp', start: daysAgo(6), end: daysAgo(5), status: 'ENDED' },
+    ];
+
+    for (const u of updates) {
+      const [result] = await connection.execute(
+        'UPDATE contests SET start_time = ?, end_time = ?, status = ? WHERE title = ?',
+        [u.start, u.end, u.status, u.title]
+      );
+      if (result.affectedRows > 0) {
+        console.log(`  ✓ ${u.title} → ${u.status} (${u.start} to ${u.end})`);
+      } else {
+        console.log(`  ⚠ ${u.title} not found (skipped)`);
+      }
+    }
+
+    console.log('\n✅ Contest dates refreshed without affecting users, submissions, or participations!');
+  } catch (err) {
+    console.error('❌ Date refresh failed:', err.message);
+    process.exit(1);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
+// ── Full seed mode (TRUNCATES everything) ──
 async function seed() {
   let connection;
   try {
     connection = await mysql.createConnection({ ...DB_CONFIG, database: DB_NAME });
-    console.log('🌱 Seeding database...\n');
+    console.log('🌱 Seeding database (FULL RESET)...\n');
 
-    // Clear tables in correct order
+    // Clear tables
     await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
     const tables = ['submissions', 'participations', 'contest_problems', 'problems', 'contests', 'users'];
     for (const t of tables) {
       await connection.execute(`TRUNCATE TABLE ${t}`);
     }
     await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
-
-    // Generate dates relative to NOW so contests are always valid
-    const now = new Date();
-    const daysAgo = (d) => { const dt = new Date(now); dt.setDate(dt.getDate() - d); return dt.toISOString().slice(0, 19).replace('T', ' '); };
-    const daysFromNow = (d) => { const dt = new Date(now); dt.setDate(dt.getDate() + d); return dt.toISOString().slice(0, 19).replace('T', ' '); };
-    const hoursAgo = (h) => { const dt = new Date(now); dt.setHours(dt.getHours() - h); return dt.toISOString().slice(0, 19).replace('T', ' '); };
-    const hoursFromNow = (h) => { const dt = new Date(now); dt.setHours(dt.getHours() + h); return dt.toISOString().slice(0, 19).replace('T', ' '); };
 
     // ── Users ──
     const salt = await bcrypt.genSalt(10);
@@ -36,22 +72,18 @@ async function seed() {
     console.log('  ✓ 5 users (1 admin + 4 users)');
 
     // ── Contests ──
-    // Contest 1: ONGOING — started 2 hours ago, ends in 22 hours
     await connection.execute(
       `INSERT INTO contests (title, description, start_time, end_time, status) VALUES (?, ?, ?, ?, ?)`,
       ['Weekly Challenge #1', 'Weekly coding contest featuring classic algorithmic challenges. Solve problems using any language you prefer.', hoursAgo(2), hoursFromNow(22), 'ONGOING']
     );
-    // Contest 2: ONGOING — started 1 hour ago, ends in 47 hours
     await connection.execute(
       `INSERT INTO contests (title, description, start_time, end_time, status) VALUES (?, ?, ?, ?, ?)`,
       ['Data Structures Sprint', 'A 2-day sprint focused on data structure problems — trees, graphs, and arrays.', hoursAgo(1), hoursFromNow(47), 'ONGOING']
     );
-    // Contest 3: UPCOMING — starts in 3 days
     await connection.execute(
       `INSERT INTO contests (title, description, start_time, end_time, status) VALUES (?, ?, ?, ?, ?)`,
       ['Monthly Marathon', 'Monthly competitive programming marathon with hard problems and big prizes.', daysFromNow(3), daysFromNow(4), 'UPCOMING']
     );
-    // Contest 4: ENDED — ended 5 days ago
     await connection.execute(
       `INSERT INTO contests (title, description, start_time, end_time, status) VALUES (?, ?, ?, ?, ?)`,
       ['Beginner Bootcamp', 'A beginner-friendly contest with easy problems to get you started.', daysAgo(6), daysAgo(5), 'ENDED']
@@ -81,45 +113,37 @@ async function seed() {
     console.log('  ✓ 10 problems (3 easy, 4 medium, 3 hard)');
 
     // ── Contest-Problem mappings ──
-    // Contest 1 (Weekly Challenge): problems 1, 4, 5, 8
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (1, 1)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (1, 4)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (1, 5)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (1, 8)`);
-    // Contest 2 (Data Structures Sprint): problems 2, 3, 6, 7, 9
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (2, 2)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (2, 3)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (2, 6)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (2, 7)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (2, 9)`);
-    // Contest 3 (Monthly Marathon): problems 5, 7, 8, 9, 10
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (3, 5)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (3, 7)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (3, 8)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (3, 9)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (3, 10)`);
-    // Contest 4 (Beginner Bootcamp): problems 1, 2, 3
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (4, 1)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (4, 2)`);
     await connection.execute(`INSERT INTO contest_problems (contest_id, problem_id) VALUES (4, 3)`);
     console.log('  ✓ contest-problem mappings');
 
     // ── Participations ──
-    // sayan, alice, bob joined Contest 1
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (2, 1)`);
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (3, 1)`);
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (4, 1)`);
-    // sayan, charlie joined Contest 2
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (2, 2)`);
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (5, 2)`);
-    // Past contest participations
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (2, 4)`);
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (3, 4)`);
     await connection.execute(`INSERT INTO participations (user_id, contest_id) VALUES (4, 4)`);
     console.log('  ✓ participations');
 
     // ── Submissions ──
-    // Contest 1 submissions
     await connection.execute(
       `INSERT INTO submissions (user_id, contest_id, problem_id, code, language, score) VALUES (?, ?, ?, ?, ?, ?)`,
       [2, 1, 1, 'function twoSum(nums, target) {\n  const map = {};\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (map[complement] !== undefined) return [map[complement], i];\n    map[nums[i]] = i;\n  }\n}', 'javascript', 100]
@@ -140,7 +164,6 @@ async function seed() {
       `INSERT INTO submissions (user_id, contest_id, problem_id, code, language, score) VALUES (?, ?, ?, ?, ?, ?)`,
       [4, 1, 1, 'vector<int> twoSum(vector<int>& nums, int target) {\n  unordered_map<int, int> m;\n  for (int i = 0; i < nums.size(); i++) {\n    if (m.count(target - nums[i])) return {m[target - nums[i]], i};\n    m[nums[i]] = i;\n  }\n  return {};\n}', 'cpp', 80]
     );
-    // Contest 2 submissions
     await connection.execute(
       `INSERT INTO submissions (user_id, contest_id, problem_id, code, language, score) VALUES (?, ?, ?, ?, ?, ?)`,
       [2, 2, 2, 'def reverseString(s):\n    left, right = 0, len(s) - 1\n    while left < right:\n        s[left], s[right] = s[right], s[left]\n        left += 1\n        right -= 1', 'python', 100]
@@ -149,7 +172,6 @@ async function seed() {
       `INSERT INTO submissions (user_id, contest_id, problem_id, code, language, score) VALUES (?, ?, ?, ?, ?, ?)`,
       [5, 2, 3, 'bool isPalindrome(int x) {\n  if (x < 0) return false;\n  int rev = 0, original = x;\n  while (x > 0) {\n    rev = rev * 10 + x % 10;\n    x /= 10;\n  }\n  return original == rev;\n}', 'cpp', 100]
     );
-    // Contest 4 (ended) submissions
     await connection.execute(
       `INSERT INTO submissions (user_id, contest_id, problem_id, code, language, score) VALUES (?, ?, ?, ?, ?, ?)`,
       [2, 4, 1, 'const twoSum = (nums, target) => {\n  for (let i = 0; i < nums.length; i++)\n    for (let j = i+1; j < nums.length; j++)\n      if (nums[i] + nums[j] === target) return [i, j];\n}', 'javascript', 90]
@@ -173,4 +195,13 @@ async function seed() {
   }
 }
 
-seed();
+// ── Entry point ──
+const args = process.argv.slice(2);
+
+if (args.includes('--refresh-dates')) {
+  refreshDates();
+} else {
+  console.log('⚠️  This will TRUNCATE all tables and re-seed from scratch.');
+  console.log('   Use --refresh-dates to only update contest dates without wiping data.\n');
+  seed();
+}

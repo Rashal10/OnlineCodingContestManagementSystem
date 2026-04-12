@@ -1,183 +1,117 @@
 const API_BASE = 'http://localhost:5001/api';
 
-// Helper to get auth headers
+function handleAuthError(res: Response) {
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login?expired=1';
+    }
+  }
+}
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem('token');
   return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 }
 
-// Auth API
-export async function registerUser(username: string, email: string, password: string) {
-  const res = await fetch(`${API_BASE}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, email, password }),
-  });
+async function apiRequest(url: string, options?: RequestInit) {
+  const res = await fetch(url, options);
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Registration failed');
+    handleAuthError(res);
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Request failed');
   }
   return res.json();
 }
 
-export async function loginUser(email: string, password: string) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Login failed');
-  }
-  return res.json();
-}
+// ─── Auth ───
+export const registerUser = (username: string, email: string, password: string) =>
+  apiRequest(`${API_BASE}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password }) });
 
-export async function getCurrentUser() {
-  const res = await fetch(`${API_BASE}/auth/me`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error('Failed to fetch current user');
-  return res.json();
-}
+export const loginUser = (email: string, password: string) =>
+  apiRequest(`${API_BASE}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
 
-// Dashboard API
-export async function fetchDashboardStats() {
-  const res = await fetch(`${API_BASE}/dashboard/stats`);
-  if (!res.ok) throw new Error('Failed to fetch dashboard stats');
-  return res.json();
-}
+export const getCurrentUser = () =>
+  apiRequest(`${API_BASE}/auth/me`, { headers: getAuthHeaders() });
 
-// Contest API
-export async function fetchContests() {
-  const res = await fetch(`${API_BASE}/contests`);
-  if (!res.ok) throw new Error('Failed to fetch contests');
-  return res.json();
-}
+export const updateProfile = (data: { username?: string; email?: string }) =>
+  apiRequest(`${API_BASE}/auth/me`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) });
 
-export async function fetchContestById(id: number) {
-  const res = await fetch(`${API_BASE}/contests/${id}`);
-  if (!res.ok) throw new Error('Failed to fetch contest');
-  return res.json();
-}
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  apiRequest(`${API_BASE}/auth/me/password`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ currentPassword, newPassword }) });
 
-export async function fetchContestProblems(contestId: number) {
-  const res = await fetch(`${API_BASE}/contests/${contestId}/problems`);
-  if (!res.ok) throw new Error('Failed to fetch contest problems');
-  return res.json();
-}
+// ─── Dashboard ───
+export const fetchDashboardStats = () => apiRequest(`${API_BASE}/dashboard/stats`);
 
-export async function joinContest(contestId: number) {
-  const res = await fetch(`${API_BASE}/submissions/participations`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ contest_id: contestId }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to join contest');
-  }
-  return res.json();
-}
+// ─── Contests ───
+export const fetchContests = () => apiRequest(`${API_BASE}/contests`);
+export const fetchContestById = (id: number) => apiRequest(`${API_BASE}/contests/${id}`);
+export const fetchContestProblems = (contestId: number) => apiRequest(`${API_BASE}/contests/${contestId}/problems`);
 
-export async function fetchActiveParticipation() {
-  const res = await fetch(`${API_BASE}/contests/me/active-participation`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error('Failed to fetch active participation');
-  return res.json();
-}
+export const joinContest = (contestId: number) =>
+  apiRequest(`${API_BASE}/submissions/participations`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ contest_id: contestId }) });
 
-export async function startContest(contestId: number) {
-  const res = await fetch(`${API_BASE}/contests/${contestId}/start`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to start contest');
-  }
-  return res.json();
-}
+export const fetchActiveParticipation = () =>
+  apiRequest(`${API_BASE}/contests/me/active-participation`, { headers: getAuthHeaders() });
 
-export async function finishContest(contestId: number) {
-  const res = await fetch(`${API_BASE}/contests/${contestId}/finish`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to finish contest');
-  }
-  return res.json();
-}
+export const startContest = (contestId: number) =>
+  apiRequest(`${API_BASE}/contests/${contestId}/start`, { method: 'POST', headers: getAuthHeaders() });
 
-// Problem API
-export async function fetchProblems() {
-  const res = await fetch(`${API_BASE}/problems`);
-  if (!res.ok) throw new Error('Failed to fetch problems');
-  return res.json();
-}
+export const finishContest = (contestId: number) =>
+  apiRequest(`${API_BASE}/contests/${contestId}/finish`, { method: 'POST', headers: getAuthHeaders() });
 
-export async function fetchProblemById(id: number) {
-  const res = await fetch(`${API_BASE}/problems/${id}`);
-  if (!res.ok) throw new Error('Failed to fetch problem');
-  return res.json();
-}
+// ─── Admin Contest CRUD ───
+export const createContest = (data: any) =>
+  apiRequest(`${API_BASE}/contests`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) });
 
-// Leaderboard API
-export async function fetchLeaderboard(contestId?: number) {
-  const url = contestId
-    ? `${API_BASE}/leaderboard/${contestId}`
-    : `${API_BASE}/leaderboard`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to fetch leaderboard');
-  return res.json();
-}
+export const updateContest = (id: number, data: any) =>
+  apiRequest(`${API_BASE}/contests/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) });
 
-// Submission API
-export async function fetchSubmissions(filters?: { user_id?: number; contest_id?: number }) {
+export const deleteContest = (id: number) =>
+  apiRequest(`${API_BASE}/contests/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+
+export const addProblemToContest = (contestId: number, problemId: number) =>
+  apiRequest(`${API_BASE}/contests/${contestId}/problems`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ problem_id: problemId }) });
+
+export const removeProblemFromContest = (contestId: number, problemId: number) =>
+  apiRequest(`${API_BASE}/contests/${contestId}/problems/${problemId}`, { method: 'DELETE', headers: getAuthHeaders() });
+
+// ─── Problems ───
+export const fetchProblems = () => apiRequest(`${API_BASE}/problems`);
+export const fetchProblemById = (id: number) => apiRequest(`${API_BASE}/problems/${id}`);
+
+export const createProblem = (data: any) =>
+  apiRequest(`${API_BASE}/problems`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) });
+
+export const updateProblem = (id: number, data: any) =>
+  apiRequest(`${API_BASE}/problems/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) });
+
+export const deleteProblem = (id: number) =>
+  apiRequest(`${API_BASE}/problems/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+
+// ─── Leaderboard ───
+export const fetchLeaderboard = (contestId?: number) =>
+  apiRequest(contestId ? `${API_BASE}/leaderboard/${contestId}` : `${API_BASE}/leaderboard`);
+
+// ─── Submissions ───
+export function fetchSubmissions(filters?: { user_id?: number; contest_id?: number }) {
   const params = new URLSearchParams();
   if (filters?.user_id) params.set('user_id', String(filters.user_id));
   if (filters?.contest_id) params.set('contest_id', String(filters.contest_id));
-  const res = await fetch(`${API_BASE}/submissions?${params}`);
-  if (!res.ok) throw new Error('Failed to fetch submissions');
-  return res.json();
+  return apiRequest(`${API_BASE}/submissions?${params}`);
 }
 
-export async function submitSolution(contestId: number, problemId: number, code: string, language: string) {
-  const res = await fetch(`${API_BASE}/submissions`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ 
-      contest_id: contestId, 
-      problem_id: problemId, 
-      code, 
-      language,
-    }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to submit solution');
-  }
-  return res.json();
-}
+export const submitSolution = (contestId: number, problemId: number, code: string, language: string) =>
+  apiRequest(`${API_BASE}/submissions`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ contest_id: contestId, problem_id: problemId, code, language }) });
 
-// Participations API
-export async function fetchParticipations(filters?: { user_id?: number; contest_id?: number }) {
+// ─── Participations ───
+export function fetchParticipations(filters?: { user_id?: number; contest_id?: number }) {
   const params = new URLSearchParams();
   if (filters?.user_id) params.set('user_id', String(filters.user_id));
   if (filters?.contest_id) params.set('contest_id', String(filters.contest_id));
-  const res = await fetch(`${API_BASE}/submissions/participations?${params}`);
-  if (!res.ok) throw new Error('Failed to fetch participations');
-  return res.json();
+  return apiRequest(`${API_BASE}/submissions/participations?${params}`);
 }
 
-// Users API (admin only)
-export async function fetchUsers() {
-  const res = await fetch(`${API_BASE}/users`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error('Failed to fetch users');
-  return res.json();
-}
+// ─── Users (admin) ───
+export const fetchUsers = () => apiRequest(`${API_BASE}/auth/users`, { headers: getAuthHeaders() });

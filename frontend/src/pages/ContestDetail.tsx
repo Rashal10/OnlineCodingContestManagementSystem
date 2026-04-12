@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchContestById, fetchContestProblems, joinContest, fetchParticipations, startContest } from "../api/api";
 import { useAuth } from "../App";
+import { useToast } from "../components/Toast";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 interface Contest {
   contest_id: number;
@@ -50,7 +52,8 @@ function useCountdown(endTime: string) {
 export default function ContestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, refreshActiveContest } = useAuth();
+  const { showToast } = useToast();
 
   const [contest, setContest] = useState<Contest | null>(null);
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -58,7 +61,7 @@ export default function ContestDetail() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [starting, setStarting] = useState(false);
-  const { refreshActiveContest } = useAuth();
+  const [showStartConfirm, setShowStartConfirm] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -85,25 +88,27 @@ export default function ContestDetail() {
     setJoining(true);
     try {
       await joinContest(parseInt(id!));
-      setParticipation({ status: 'REGISTERED' });
+      setParticipation({ status: 'JOINED' });
+      showToast("Successfully joined contest!", "success");
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message, "error");
     } finally {
       setJoining(false);
     }
   };
 
   const handleStartExam = async () => {
-    if (!confirm("You are about to start the timer. You will be locked in this environment until you finish or time runs out. Proceed?")) return;
     setStarting(true);
     try {
       await startContest(parseInt(id!));
       await refreshActiveContest();
       setParticipation({ status: 'STARTED' });
+      showToast("Exam started! Good luck! 🚀", "success");
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message, "error");
     } finally {
       setStarting(false);
+      setShowStartConfirm(false);
     }
   };
 
@@ -165,13 +170,13 @@ export default function ContestDetail() {
             </button>
           )}
 
-          {participation?.status === 'REGISTERED' && contest.status === 'ONGOING' && (
-            <button onClick={handleStartExam} disabled={starting} className="btn-primary btn-join" style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>
+          {participation?.status === 'JOINED' && contest.status === 'ONGOING' && (
+            <button onClick={() => setShowStartConfirm(true)} disabled={starting} className="btn-primary btn-join" style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>
               {starting ? "Starting..." : "⏳ Start Exam Timer"}
             </button>
           )}
 
-          {participation?.status === 'REGISTERED' && contest.status === 'UPCOMING' && (
+          {participation?.status === 'JOINED' && contest.status === 'UPCOMING' && (
              <span className="joined-badge">✅ Registered (Waiting for start)</span>
           )}
 
@@ -219,6 +224,16 @@ export default function ContestDetail() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showStartConfirm}
+        title="Start Exam"
+        message="You are about to start the timer. You will be locked in this environment until you finish or time runs out. Are you ready?"
+        confirmText="Start Exam"
+        variant="warning"
+        onConfirm={handleStartExam}
+        onCancel={() => setShowStartConfirm(false)}
+      />
     </div>
   );
 }
