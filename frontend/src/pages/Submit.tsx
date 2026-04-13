@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { fetchContests, fetchContestProblems, submitSolution, fetchParticipations } from "../api/api";
+import { useToast } from "../components/Toast";
 
 interface Problem {
   problem_id: number;
@@ -18,6 +19,7 @@ interface Contest {
 export default function Submit() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [contests, setContests] = useState<Contest[]>([]);
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -31,8 +33,6 @@ export default function Submit() {
   const [loading, setLoading] = useState(true);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   // Load contests and participations on mount
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function Submit() {
 
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         const userParticipations = participationsData
-          .filter((p: any) => p.user_id === user.user_id)
+          .filter((p: any) => p.user_id === user.user_id && p.status === 'STARTED')
           .map((p: any) => p.contest_id);
         setParticipations(userParticipations);
 
@@ -54,7 +54,7 @@ export default function Submit() {
           setSelectedContest(cid);
         }
       })
-      .catch(() => setError("Failed to load data"))
+      .catch(() => showToast("Failed to load data", "error"))
       .finally(() => setLoading(false));
   }, [searchParams]);
 
@@ -86,22 +86,20 @@ export default function Submit() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
 
     if (!selectedContest || !selectedProblem) {
-      setError("Please select both a contest and a problem");
+      showToast("Please select both a contest and a problem", "warning");
       return;
     }
 
     if (!code.trim()) {
-      setError("Please enter your code");
+      showToast("Please enter your code", "warning");
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("You must be logged in to submit");
+      showToast("You must be logged in to submit", "error");
       navigate("/login");
       return;
     }
@@ -110,26 +108,26 @@ export default function Submit() {
 
     try {
       const result = await submitSolution(selectedContest, selectedProblem, code, language);
-      setSuccess(`Solution submitted! Score: ${result.score}`);
+      showToast(`Solution submitted! Score: ${result.score}`, "success");
       setCode("");
     } catch (err: any) {
-      setError(err.message || "Submission failed");
+      showToast(err.message || "Submission failed", "error");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <div className="skeleton-block" />;
 
   const joinedContests = contests.filter((c) => participations.includes(c.contest_id));
 
   return (
     <div className="submit-page">
-      <h1>Submit Solution</h1>
+      <h1>🚀 Submit Solution</h1>
 
       {joinedContests.length === 0 && (
-        <div className="error-message" style={{ marginBottom: 20 }}>
-          You haven't joined any ongoing contests yet.{" "}
+        <div className="empty-state" style={{ marginBottom: 20 }}>
+          You haven't started exams for any ongoing contests yet.{" "}
           <a href="/contests" style={{ color: "var(--accent)" }}>
             Go to Contests →
           </a>
@@ -137,8 +135,6 @@ export default function Submit() {
       )}
 
       <form onSubmit={handleSubmit} className="submit-form">
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
 
         <div className="form-row">
           <div className="form-group">

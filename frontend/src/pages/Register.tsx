@@ -2,28 +2,28 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { registerUser } from "../api/api";
 import { useAuth } from "../App";
+import { useToast } from "../components/Toast";
 
 export default function Register() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      showToast("Passwords do not match", "error");
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      showToast("Password must be at least 6 characters", "error");
       return;
     }
 
@@ -40,9 +40,10 @@ export default function Register() {
         },
         data.token
       );
+      showToast("Account created successfully!", "success");
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      showToast(err.message || "Registration failed", "error");
     } finally {
       setLoading(false);
     }
@@ -57,8 +58,6 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && <div className="error-message">{error}</div>}
-
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input

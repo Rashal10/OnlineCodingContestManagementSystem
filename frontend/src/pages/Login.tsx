@@ -1,19 +1,26 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { loginUser } from "../api/api";
 import { useAuth } from "../App";
+import { useToast } from "../components/Toast";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (searchParams.get("expired") === "1") {
+      showToast("Your session has expired. Please log in again.", "warning", 6000);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -27,9 +34,10 @@ export default function Login() {
         },
         data.token
       );
+      showToast(`Welcome back, ${data.username}!`, "success");
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      showToast(err.message || "Login failed", "error");
     } finally {
       setLoading(false);
     }
@@ -44,8 +52,6 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && <div className="error-message">{error}</div>}
-
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
